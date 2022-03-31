@@ -19,7 +19,7 @@ namespace DiscordNetBot.Modules
         }
 
         // Kanye.rest - quote of the day
-        [SlashCommand("kanye", "Use this for a Kanye quote.")]
+        [SlashCommand("kanye", "Use this for a daily Kanye West quote.")]
         public async Task Kanye()
         {
             var imageURL = "https://thumbs.dreamstime.com/b/kanye-west-83039299.jpg";

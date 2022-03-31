@@ -2,9 +2,13 @@
 using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace DiscordNetBot
 {
@@ -14,6 +18,7 @@ namespace DiscordNetBot
         private readonly CommandService _comserv;
         private readonly InteractionService _commands;
         private readonly IServiceProvider _services;
+        private static System.Timers.Timer Timer { get; set; }
 
         public CommandHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services, CommandService comserv)
         {
@@ -34,11 +39,85 @@ namespace DiscordNetBot
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
             _client.MessageReceived += HandleCommandAsync;
 
-            await _comserv.AddModulesAsync(assembly: Assembly.GetEntryAssembly(), _services);
+            // Process every 55 mins
+            Timer = new(3300000);
+            Timer.Elapsed += async (_, _) =>
+            {
+                if (_client.ConnectionState == ConnectionState.Connected)
+                {
+                    // If Thursday at 6pm, send announcement about free epic game
+                    if (DateTime.Now.DayOfWeek == DayOfWeek.Thursday && DateTime.Now.Hour == 18)
+                    {
+                        await SendAnnouncement();
+                    }
+                }
+            };
+            Timer.AutoReset = true;
+            Timer.Enabled = true;
+
             // Add the public modules that inherit InteractionModuleBase<T> to the InteractionService
+            await _comserv.AddModulesAsync(assembly: Assembly.GetEntryAssembly(), _services);
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
         }
 
+        private static void Timer_Elapsed(object sender, ElapsedEventArgs e) => throw new NotImplementedException();
+        private async Task SendAnnouncement()
+        {
+            var embed = new EmbedBuilder()
+            {
+                Color = new Color(114, 137, 218),
+                Title = "FREE THIS WEEK"
+            };
+            embed
+            .WithTimestamp(DateTimeOffset.Now);
+            string jsonString = new WebClient().DownloadString("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions");
+            JToken token = JToken.Parse(jsonString);
+            var elements = token.SelectToken("data").SelectToken("Catalog").SelectToken("searchStore").SelectToken("elements");
+            var imageURL = "";
+            string title = "Title";
+            string description = "Description";
+            string pageURL = "https://www.epicgames.com/store/en-US/p/";
+            var gameLink = "";
+            var appLink = "";
+            ulong channel = 123456789012345678;
+            elements.Take(1);
+            foreach (var element in elements)
+            {
+                var isPromotion = element.SelectToken("promotions");
+                var images = element.SelectToken("keyImages");
+                if (isPromotion.HasValues)
+                {
+                    var offers = isPromotion.SelectToken("promotionalOffers");
+                    if (offers.HasValues)
+                    {
+                        var offerss = offers[0].SelectToken("promotionalOffers");
+                        if (offerss.HasValues)
+                        {
+                            title = (string)element.SelectToken("title");
+                            description = (string)element.SelectToken("description");
+                            gameLink = (string)element.SelectToken("productSlug");
+                            appLink = "https://www.epicfreegames.net/redirect?slug=" + gameLink;
+                            gameLink = pageURL + gameLink;
+                            if (images.HasValues)
+                            {
+                                var imagess = images[0].SelectToken("url");
+                                imageURL = imagess.ToString();
+                            }
+                        }
+                    }
+                }
+            }
+            embed.AddField(title, description, false).WithImageUrl(imageURL).WithUrl(gameLink);
+            var builder = new ComponentBuilder()
+            .WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
+            builder
+             .WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
+            try
+            {
+                await ((ITextChannel)_client.GetChannel(channel)).SendMessageAsync(embed: embed.Build());
+            }
+            catch { }
+        }
         private async Task HandleInteraction(SocketInteraction arg)
         {
             try
