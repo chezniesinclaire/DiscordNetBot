@@ -1,5 +1,5 @@
 # DiscordNetBot
-A Discord Bot with basic slash commands and funny restful APIs using Discord.NET 3.3.2
+A Discord Bot with basic slash commands and a funny restful API using .NET Core 3.1 and Discord.NET 3.3.2
 
 # Initial Setup:
 * After you've created your bot in the Discord Developer Portal:
