@@ -47,7 +47,7 @@ namespace DiscordNetBot.Modules
         }
 
         // Epic - View latest free game
-        [SlashCommand("free-games", "Use this to see the current free game available on epic games.")]
+        [SlashCommand("free-games", "Use this to see the current free epic game.")]
         public async Task EpicGames()
         {
             var embed = new EmbedBuilder()
@@ -58,20 +58,23 @@ namespace DiscordNetBot.Modules
             embed
             .WithFooter($"Requested by {Context.User.Username}")
             .WithTimestamp(DateTimeOffset.Now);
+
             string jsonString = new WebClient().DownloadString("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions");
             JToken token = JToken.Parse(jsonString);
             var elements = token.SelectToken("data").SelectToken("Catalog").SelectToken("searchStore").SelectToken("elements");
             var imageURL = "";
-            string title = "Title";
-            string description = "Description";
-            string pageURL = "https://www.epicgames.com/store/en-US/p/";
+            string title = "hello";
+            string description = "hello";
             var gameLink = "";
             var appLink = "";
+            var pageSlug = "";
+
             elements.Take(1);
             foreach (var element in elements)
             {
                 var isPromotion = element.SelectToken("promotions");
                 var images = element.SelectToken("keyImages");
+                var offerMappings = element.SelectToken("offerMappings");
                 if (isPromotion.HasValues)
                 {
                     var offers = isPromotion.SelectToken("promotionalOffers");
@@ -82,9 +85,11 @@ namespace DiscordNetBot.Modules
                         {
                             title = (string)element.SelectToken("title");
                             description = (string)element.SelectToken("description");
-                            gameLink = (string)element.SelectToken("productSlug");
-                            appLink = "https://www.epicfreegames.net/redirect?slug=" + gameLink;
-                            gameLink = pageURL + gameLink;
+                            if (offerMappings.HasValues)
+                            {
+                                var offerMappingss = offerMappings[0].SelectToken("pageSlug");
+                                pageSlug = offerMappingss.ToString();
+                            }
                             if (images.HasValues)
                             {
                                 var imagess = images[0].SelectToken("url");
@@ -94,11 +99,11 @@ namespace DiscordNetBot.Modules
                     }
                 }
             }
+            appLink = "https://www.epicfreegames.net/redirect?slug=" + pageSlug;
+            gameLink = "https://www.epicgames.com/store/en-US/p/" + pageSlug;
             embed.AddField(title, description, false).WithImageUrl(imageURL).WithUrl(gameLink);
-            var builder = new ComponentBuilder()
-            .WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
-            builder
-             .WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
+            var builder = new ComponentBuilder().WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
+            builder.WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
             await RespondAsync(embed: embed.Build(), components: builder.Build());
         }
 

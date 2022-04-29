@@ -70,21 +70,25 @@ namespace DiscordNetBot
             };
             embed
             .WithTimestamp(DateTimeOffset.Now);
+
+            ulong channel = 123456789012345678;
             string jsonString = new WebClient().DownloadString("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions");
             JToken token = JToken.Parse(jsonString);
             var elements = token.SelectToken("data").SelectToken("Catalog").SelectToken("searchStore").SelectToken("elements");
             var imageURL = "";
             string title = "Title";
             string description = "Description";
-            string pageURL = "https://www.epicgames.com/store/en-US/p/";
             var gameLink = "";
             var appLink = "";
-            ulong channel = 123456789012345678;
+            var pageSlug = "";
+
             elements.Take(1);
             foreach (var element in elements)
             {
                 var isPromotion = element.SelectToken("promotions");
                 var images = element.SelectToken("keyImages");
+                var offerMappings = element.SelectToken("offerMappings");
+
                 if (isPromotion.HasValues)
                 {
                     var offers = isPromotion.SelectToken("promotionalOffers");
@@ -95,9 +99,11 @@ namespace DiscordNetBot
                         {
                             title = (string)element.SelectToken("title");
                             description = (string)element.SelectToken("description");
-                            gameLink = (string)element.SelectToken("productSlug");
-                            appLink = "https://www.epicfreegames.net/redirect?slug=" + gameLink;
-                            gameLink = pageURL + gameLink;
+                            if (offerMappings.HasValues)
+                            {
+                                var offerMappingss = offerMappings[0].SelectToken("pageSlug");
+                                pageSlug = offerMappingss.ToString();
+                            }
                             if (images.HasValues)
                             {
                                 var imagess = images[0].SelectToken("url");
@@ -107,11 +113,11 @@ namespace DiscordNetBot
                     }
                 }
             }
+            appLink = "https://www.epicfreegames.net/redirect?slug=" + pageSlug;
+            gameLink = "https://www.epicgames.com/store/en-US/p/" + pageSlug;
             embed.AddField(title, description, false).WithImageUrl(imageURL).WithUrl(gameLink);
-            var builder = new ComponentBuilder()
-            .WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
-            builder
-             .WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
+            var builder = new ComponentBuilder().WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
+            builder.WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
             try
             {
                 await ((ITextChannel)_client.GetChannel(channel)).SendMessageAsync(embed: embed.Build());
