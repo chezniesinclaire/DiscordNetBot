@@ -39,8 +39,8 @@ namespace DiscordNetBot
             _commands.ComponentCommandExecuted += ComponentCommandExecuted;
             _client.MessageReceived += HandleCommandAsync;
 
-            // Process every 55 mins
-            Timer = new(3300000);
+            // -------------- BEGIN EPIC GAME NOTIFICATION
+            Timer = new(3300000); // Process every 55 mins
             Timer.Elapsed += async (_, _) =>
             {
                 if (_client.ConnectionState == ConnectionState.Connected)
@@ -54,6 +54,7 @@ namespace DiscordNetBot
             };
             Timer.AutoReset = true;
             Timer.Enabled = true;
+            // -------------- END EPIC GAME NOTIFICATION
 
             // Add the public modules that inherit InteractionModuleBase<T> to the InteractionService
             await _comserv.AddModulesAsync(assembly: Assembly.GetEntryAssembly(), _services);
@@ -61,8 +62,16 @@ namespace DiscordNetBot
         }
 
         private static void Timer_Elapsed(object sender, ElapsedEventArgs e) => throw new NotImplementedException();
+
+        // SendAnnouncement
+        //
+        // Sends an announcement to remind users of the current free epic game from https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions
+        // !! IMPORTANT - Set the channelID in order to send this announcement to a specific channel
+        //
         private async Task SendAnnouncement()
         {
+            ulong channelID = 0000000000000; // CHANNEL ID HERE 
+
             var embed = new EmbedBuilder()
             {
                 Color = new Color(114, 137, 218),
@@ -71,16 +80,16 @@ namespace DiscordNetBot
             embed
             .WithTimestamp(DateTimeOffset.Now);
 
-            ulong channel = 123456789012345678;
             string jsonString = new WebClient().DownloadString("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions");
             JToken token = JToken.Parse(jsonString);
             var elements = token.SelectToken("data").SelectToken("Catalog").SelectToken("searchStore").SelectToken("elements");
             var imageURL = "";
-            string title = "Title";
-            string description = "Description";
+            string title = "hello";
+            string description = "hello";
             var gameLink = "";
             var appLink = "";
             var pageSlug = "";
+            var productSlug = "";
 
             elements.Take(1);
             foreach (var element in elements)
@@ -97,6 +106,7 @@ namespace DiscordNetBot
                         var offerss = offers[0].SelectToken("promotionalOffers");
                         if (offerss.HasValues)
                         {
+                            productSlug = (string)element.SelectToken("productSlug"); // mystery games
                             title = (string)element.SelectToken("title");
                             description = (string)element.SelectToken("description");
                             if (offerMappings.HasValues)
@@ -106,24 +116,26 @@ namespace DiscordNetBot
                             }
                             if (images.HasValues)
                             {
-                                var imagess = images[0].SelectToken("url");
-                                imageURL = imagess.ToString();
+                                var imagess = images[2].SelectToken("url");
+                                imageURL = (string)images[2].SelectToken("url");
                             }
                         }
                     }
                 }
             }
-            appLink = "https://www.epicfreegames.net/redirect?slug=" + pageSlug;
-            gameLink = "https://www.epicgames.com/store/en-US/p/" + pageSlug;
-            embed.AddField(title, description, false).WithImageUrl(imageURL).WithUrl(gameLink);
+            appLink = "https://www.epicfreegames.net/redirect?slug=" + productSlug;
+            gameLink = "https://www.epicgames.com/store/en-US/p/" + productSlug;
+            embed.AddField(title, description, false).WithImageUrl(Uri.EscapeUriString(imageURL)).WithUrl(gameLink);
             var builder = new ComponentBuilder().WithButton("View in Browser", null, ButtonStyle.Link, null, gameLink);
             builder.WithButton("View in Launcher", null, ButtonStyle.Link, null, appLink);
+
             try
             {
-                await ((ITextChannel)_client.GetChannel(channel)).SendMessageAsync(embed: embed.Build());
+                await ((ITextChannel)_client.GetChannel(channelID)).SendMessageAsync(embed: embed.Build());
             }
             catch { }
         }
+
         private async Task HandleInteraction(SocketInteraction arg)
         {
             try

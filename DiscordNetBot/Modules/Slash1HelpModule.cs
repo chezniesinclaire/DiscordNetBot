@@ -17,7 +17,10 @@ namespace DiscordNetBot.Modules
             _handler = handler;
         }
 
-        // Help - View all available slash commands
+        // help
+        //
+        // View all available slash commands
+        //
         [SlashCommand("help", "Use this if you need help.")]
         public async Task HelpMe()
         {
@@ -59,7 +62,10 @@ namespace DiscordNetBot.Modules
             await RespondAsync(embed: embed.Build());
         }
 
-        // Server - View server info
+        // ping
+        //
+        // View server info
+        //
         [SlashCommand("ping", "Use this to see server info.")]
         public async Task Server()
         {
@@ -84,7 +90,10 @@ namespace DiscordNetBot.Modules
             await RespondAsync(embed: embed.Build());
         }
 
-        // User - View user info
+        // user
+        //
+        // View user info
+        //
         [SlashCommand("user", "Use this to view user info.")]
         public async Task UserInfoAsync(SocketGuildUser user = null)
         {
@@ -120,7 +129,7 @@ namespace DiscordNetBot.Modules
             await RespondAsync(embed: embed.Build());
         }
 
-        // Send to admin - send message in admin channel
+        // send-to-admin - send message in admin channel
         //
         // !! IMPORTANT - Set the channelID in order to send a message to an admin channel
         //
@@ -146,7 +155,7 @@ namespace DiscordNetBot.Modules
             await RespondAsync("Thanks! Your message has been posted to the moderators.");
         }
 
-        // Invite - display bot invite link
+        // invite-link - display bot invite link
         //
         // !! IMPORTANT - Set the 'BOT_ID' to your own bot in order to send an invite link
         //
